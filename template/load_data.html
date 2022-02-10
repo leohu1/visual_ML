@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+{%extends "base.html"%}
+{%from 'bootstrap4/form.html' import render_form%}
+{% from 'bootstrap4/nav.html' import render_nav_item %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    {% block title %}
+    <title>Load Data</title>
+    {% endblock %}
+</head>
+<body>
+{% block nav %}
+        <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+            <div class="container">
+                <div class="navbar-nav mr-auto">
+                    {{ render_nav_item('load_data', 'Load Data') }}
+                    {{ render_nav_item('build_model', 'Build Model') }}
+                </div>
+            </div>
+        </nav>
+        {% endblock %}
+{% block content %}
+<div class="container">
+    <div class="card">
+    <div class="card-body">{{render_form(form)}}</div>
+    </div>
+</div>
+{% endblock %}
+
+</body>
+</html>
