@@ -11,8 +11,8 @@ import math
 
 train_thread = None
 history = None
-data = None
-form = {}
+dataset = None
+form_data = {}
 
 
 class LoadDataForm(FlaskForm):
@@ -23,8 +23,8 @@ class LoadDataForm(FlaskForm):
 
 app = Flask(__name__, template_folder="./template", static_folder="./static")
 app.secret_key = "1qsazx34r5tglg7ghuh2fh7ytg6gv67b54rfg78hj90kl0p976tfr1234"
-app.config.setdefault('BOOTSTRAP_SERVE_LOCAL', True)
 bootstrap = Bootstrap(app)
+app.config.setdefault('BOOTSTRAP_SERVE_LOCAL', True)
 
 
 class GetHistory(k.callbacks.Callback):
@@ -45,41 +45,48 @@ class GetHistory(k.callbacks.Callback):
         self.progress = epoch
 
 
-def BuildModel(forms):
-    d = {}
+def GetFormData(forms):
+    # print(forms)
+    datas = {}
     for a in list(forms):
         b = forms.get(a)
-        if d.get(a.split("[")[0]) is None:
-            d[a.split("[")[0]] = {}
+        if datas.get(a.split("[")[0]) is None:
+            datas[a.split("[")[0]] = {}
 
-        if d[a.split("[")[0]].get(int(a.split("[")[1][:-1])) is None:
-            d[a.split("[")[0]][int(a.split("[")[1][:-1])] = {}
+        if datas[a.split("[")[0]].get(int(a.split("[")[1][:-1])) is None:
+            datas[a.split("[")[0]][int(a.split("[")[1][:-1])] = {}
 
-        d[a.split("[")[0]][int(a.split("[")[1][:-1])][a.split("[")[2][:-1]] = b
-    print(d)
-    inp = k.layers.Input(shapes[data])
+        datas[a.split("[")[0]][int(a.split("[")[1][:-1])][a.split("[")[2][:-1]] = b
+    datas["time"] = len(datas["data"]) if datas.get("data") else 0
+    # print(datas)
+    return datas
+
+
+def BuildModel(datas):
+    # print(datas)
+    inp = k.layers.Input(shapes[dataset])
     layer_dict = {}
-    for it in d["data"]:
+    for it in datas["data"]:
         args = {}
-        for i in d["args"]:
-            if d["args"][i]['parent'].split("_")[-1] == d["data"][it]["id"].split("_")[-1]:
-                if arg[d["args"][i]["id"].split("-")[1]] == "int":
-                    args[d["args"][i]["id"].split("-")[1]] = int(d["args"][i]['value'])
+        for i in datas["args"]:
+            if datas["args"][i]['parent'].split("_")[-1] == datas["data"][it]["id"].split("_")[-1]:
+                if arg[datas["args"][i]["id"].split("-")[1]] == "int":
+                    args[datas["args"][i]["id"].split("-")[1]] = int(datas["args"][i]['value'])
 
-                elif arg[d["args"][i]["id"].split("-")[1]] == "float":
-                    args[d["args"][i]["id"].split("-")[1]] = float(d["args"][i]['value'])
+                elif arg[datas["args"][i]["id"].split("-")[1]] == "float":
+                    args[datas["args"][i]["id"].split("-")[1]] = float(datas["args"][i]['value'])
 
-                elif type(arg[d["args"][i]["id"].split("-")[1]]) == dict:
-                    args[d["args"][i]["id"].split("-")[1]] = arg[d["args"][i]["id"].split("-")[1]][
-                        d["args"][i]['value']]
+                elif type(arg[datas["args"][i]["id"].split("-")[1]]) == dict:
+                    args[datas["args"][i]["id"].split("-")[1]] = arg[datas["args"][i]["id"].split("-")[1]][
+                        datas["args"][i]['value']]
 
-                elif arg[d["args"][i]["id"].split("-")[1]] == "xy":
-                    if args.get(d["args"][i]["id"].split("-")[1]) is None:
-                        args[d["args"][i]["id"].split("-")[1]] = [1, 1]
-                    if d["args"][i]["id"].split("-")[2] == "x":
-                        args[d["args"][i]["id"].split("-")[1]][0] = int(d["args"][i]['value'])
-                    elif d["args"][i]["id"].split("-")[2] == "y":
-                        args[d["args"][i]["id"].split("-")[1]][1] = int(d["args"][i]['value'])
+                elif arg[datas["args"][i]["id"].split("-")[1]] == "xy":
+                    if args.get(datas["args"][i]["id"].split("-")[1]) is None:
+                        args[datas["args"][i]["id"].split("-")[1]] = [1, 1]
+                    if datas["args"][i]["id"].split("-")[2] == "x":
+                        args[datas["args"][i]["id"].split("-")[1]][0] = int(datas["args"][i]['value'])
+                    elif datas["args"][i]["id"].split("-")[2] == "y":
+                        args[datas["args"][i]["id"].split("-")[1]][1] = int(datas["args"][i]['value'])
 
         if args.get("kernel_regularizer") is not None:
             args["kernel_regularizer"] = args["kernel_regularizer"](
@@ -89,16 +96,17 @@ def BuildModel(forms):
                 args["regularizer_rate"] if args.get("regularizer_rate") is not None else 0.0)
         if args.get("regularizer_rate") is not None:
             del args["regularizer_rate"]
+        # print(args)
 
-        layer_dict[d["data"][it]['id'].split("_")[-1]] = layers[d["data"][it]['value']](**args)
-    print(layer_dict)
+        layer_dict[datas["data"][it]['id'].split("_")[-1]] = layers[datas["data"][it]['value']](**args)
+    # print(layer_dict)
 
     out_dict = {"Input": inp}
-    for _ in range(len(d["data"])):
-        for i in d["connections"]:
-            print(d["connections"][i])
-            s = d["connections"][i]['source'].split("_")[1] if d["connections"][i]['source'] != "Input" else "Input"
-            t = d["connections"][i]['target'].split("_")[1] if d["connections"][i]['target'] != "Output" else "Output"
+    for _ in range(len(datas["data"])):
+        for i in datas["connections"]:
+            # print(datas["connections"][i])
+            s = datas["connections"][i]['source'].split("_")[1] if datas["connections"][i]['source'] != "Input" else "Input"
+            t = datas["connections"][i]['target'].split("_")[1] if datas["connections"][i]['target'] != "Output" else "Output"
             if out_dict.get(s) is not None:
                 if t != "Output":
                     out_dict[t] = layer_dict[t](out_dict.get(s))
@@ -118,58 +126,44 @@ def index():
 @app.route("/load_data", methods=["GET", "POST"])
 def load_data():
     f = LoadDataForm()
-    global train_thread, data
+    global train_thread, dataset
     if not train_thread:
         if request.method == "POST":
             if f.validate_on_submit():
                 # r.set_cookie("data", value=f"{form.data_select.data}", )
-                data = f.data_select.data.split("(")[0]
+                dataset = f.data_select.data.split("(")[0]
                 return redirect("/build_model")
     return render_template("load_data.html", form=f)
 
 
 @app.route("/build_model", methods=["GET", "POST"])
 def build_model():
-    global form
+    global form_data
     if request.method == "POST":
-        form = request.form
-        print(form)
+        form_data = GetFormData(request.form)
 
     args = {}
     for i in list(layers.keys()):
-        html = "<br>"
+        html = ""
         for item in layers_config[i]:
             if arg[item] == "int":
-                html += f"<p class='mx-auto'>{item}: </p><input type='number' class='args_child mx-auto' id='{i}-{item}' value='1'>"
-                html += "<br>"
+                html += f"<p class='mx-auto'>{item}: <input type='number' class='args_child mx-auto' id='{i}-{item}' value='1'></p>"
+                # html += "<br>"
             elif arg[item] == "xy":
-                html += f"<p class='mx-auto'>{item}: <br> x: </p><input type='number' class='args_child mx-auto' min='1' id='{i}-{item}-x' value='1'><p class='mx-auto'>y: </p><input type='number' class='args_child mx-auto' id='{i}-{item}-y' value='1'>"
-                html += "<br>"
+                html += f"<p class='mx-auto'>{item}:</p><p>x: <input type='number' class='args_child mx-auto' min='1' id='{i}-{item}-x' value='1'></p><p class='mx-auto'>y: <input type='number' class='args_child mx-auto' id='{i}-{item}-y' value='1'></p>"
+                # html += "<br>"
             elif type(arg[item]) == dict:
-                html += f"<p class='mx-auto'>{item}: </p><select id='{i}-{item}' class='args_child mx-auto'>{''.join(['<option value=' + it + '>' + it + '</option>' for it in list(arg[item].keys())])}</select>"
-                html += "<br>"
+                html += f"<p class='mx-auto'>{item}: <select id='{i}-{item}' class='args_child mx-auto'>{''.join(['<option value=' + it + '>' + it + '</option>' for it in list(arg[item].keys())])}</select></p>"
+                # html += "<br>"
             elif arg[item] == "float":
-                html += f"<p class='mx-auto'>{item}: </p><input id='{i}-{item}' class='args_child mx-auto' type='number' min='0' max='1' step='0.001' value='0'><p>(float)</p>"
-                html += "<br>"
+                html += f"<p class='mx-auto'>{item}: <input id='{i}-{item}' class='args_child mx-auto' type='number' min='0' max='1' step='0.001' value='0'> (float)</p>"
+                # html += "<br>"
         args[i] = html
     args = json.dumps(args, ensure_ascii=False)
 
-    d = {}
-    for a in list(form):
-        b = form.get(a)
-        if d.get(a.split("[")[0]) is None:
-            d[a.split("[")[0]] = {}
-
-        if d[a.split("[")[0]].get(int(a.split("[")[1][:-1])) is None:
-            d[a.split("[")[0]][int(a.split("[")[1][:-1])] = {}
-
-        d[a.split("[")[0]][int(a.split("[")[1][:-1])][a.split("[")[2][:-1]] = b
-
-    d["time"] = len(d["data"]) if d.get("data") else 0
-
     return render_template("build_model.html", layers=list(layers.keys()),
                            args=args,
-                           form=d
+                           form=form_data
                            )
 
 
@@ -182,8 +176,8 @@ def compile_model():
 @app.route("/train_model")
 def train_model():
     global train_thread, history
-    if form is not None:
-        model = BuildModel(form)
+    if form_data is not None:
+        model = BuildModel(form_data)
     else:
         return "<h1>No model</h1>"
     if train_thread:
@@ -202,11 +196,11 @@ def train_model():
                           metrics=['accuracy'])
 
             def _t():
-                global data, history
+                global dataset, history
                 with app.app_context():
                     history = GetHistory()
-                    model.fit(x=datasets[data]()[0][0], y=datasets[data]()[0][1],
-                              validation_data=(datasets[data]()[1][0], datasets[data]()[1][1]), callbacks=[history])
+                    model.fit(x=datasets[dataset]()[0][0], y=datasets[dataset]()[0][1],
+                              validation_data=(datasets[dataset]()[1][0], datasets[dataset]()[1][1]), callbacks=[history])
 
             train_thread = Thread(target=_t)
             train_thread.start()

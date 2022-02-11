@@ -158,6 +158,8 @@ path, .jtk-endpoint { cursor:pointer; }
 {{ super() }}
 <script src="static/js/jsplumb.js"></script>
 <script>
+//import {jsPlumb} from "../static/js/jsplumb";
+
 function  uuid() {
      var  s = [];
      var  hexDigits =  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" ;
@@ -170,10 +172,12 @@ function  uuid() {
 }
 
 // (function() {
-var args = {{args | safe}};
-time = 0;
+var args = {{args | safe}},
 form = {{form | safe}};
-listDiv = document.getElementById("list"),
+
+var time = 0;
+
+var listDiv = document.getElementById("list"),
 showConnectionInfo = function(s) {
 		listDiv.innerHTML = s;
 		listDiv.style.display = "block";
@@ -221,7 +225,7 @@ redirect = function (url) {
         a.push({
             "id": arg[i].id,
             "value": arg[i].value,
-            "parent": $(arg[i]).parent()[0].id
+            "parent": $(arg[i]).parents(".window")[0].id
         })
     }
 
@@ -360,6 +364,8 @@ jsPlumb.ready(function() {
             dropOptions: DropOptions,
         };
 
+        instance.setContainer(jsPlumb.getSelector("#canvas"));
+
         instance.draggable(jsPlumb.getSelector(".drag-drops .window"), {
 			grid: [50, 50]
 		});
@@ -367,47 +373,37 @@ jsPlumb.ready(function() {
 
         instance.addEndpoint(jsPlumb.getSelector(".drag-drops .output "), InputPoint);
 
-		//instance.on(jsPlumb.getSelector(".drag-drops .hide"), "click",
-		//function(e) {
-		//	instance.toggleVisible(this.getAttribute("rel"));
-		//	jsPlumbUtil.consume(e);
-		//});
+        var add = function (u) {
+            $("#canvas").append("<div class='window connect' id='connect_" + u + "'><select id='select_" + u + "' class='select'><option value='None' selected></option>{% for item in layers %}<option value='{{item}}'>{{item}}</option>{% endfor %}</select><button id='delete_" + u + "' class='delete btn'><i class='fa fa-remove'></i></button><br><a data-target='#args_" + u + "' data-toggle='collapse'><i class='fa fa-angle-down'></i>Args</a><br><dir class='args collapse bg-light border border-dark rounded' id='args_" + u + "' style='padding-left: 0px;'></dir></div>")
+            instance.draggable(document.getElementById("connect_" + u), {
+                grid: [50, 50]
+            });
+            instance.addEndpoint(document.getElementById("connect_" + u), InputPoint);
+            instance.addEndpoint(document.getElementById("connect_" + u), OutputPoint);
+            $(document).ready(function () {
+                $("#select_" + u).change(function () {
+                    $("#args_" + u).empty().append(args[this.value]);
+                });
+                $("#delete_" + u).click(function () {
+                    var p = instance.getEndpoints("connect_" + u);
+                    for (var i = 0; i < p.length; i++) {
+                        instance.deleteEndpoint(p[i]);
+                    }
+                    $("#connect_" + u).remove();
+                })
+            });
+        }
 
 		instance.on(document.getElementById("add"), "click",
 		function(e) {
 			u = uuid();
-            $("#canvas").append("<div class='window connect' id='connect_" + u + "'><select id='select_" + u + "' class='select'><option value='None' selected></option>{% for item in layers %}<option value='{{item}}'>{{item}}</option>{% endfor %}</select><button id='delete_" + u + "' class='delete btn'><i class='fa fa-remove'></i></button><br><a data-target='#args_" + u + "' data-toggle='collapse'><i class='fa fa-angle-down'></i>Args</a><br><dir class='args collapse bg-light border border-dark rounded' id='args_" + u + "' style='padding-left: 0px;'></dir></div>")
-            instance.draggable(document.getElementById("connect_" + u), {
-				grid: [50, 50]
-			});
-			instance.addEndpoint(document.getElementById("connect_" + u), InputPoint);
-			instance.addEndpoint(document.getElementById("connect_" + u), OutputPoint);
-			$(document).ready(function() {
-				$("#select_" + u).change(function() {
-					$("#args_" + u).empty().append(args[this.value]);
-				});
-                $("#delete_" + u).click(function () {
-                    var p = instance.getEndpoints("connect_" + u);
-                    for (var i = 0; i < p.length; i++) {
-					    instance.deleteEndpoint(p[i]);
-				    }
-                    $("#connect_" + u).remove();
-                })
-			});
-			//instance.on(document.getElementById("delete_" + u), "click",
-			//function(e) {
-			//	var p = instance.getEndpoints("connect_" + u);
-			//	for (var i = 0; i < p.length; i++) {
-			//		instance.deleteEndpoint(p[i]);
-			//	}
-			//	$("#connect_" + u).remove();
-			//});
+            add(u);
 		});
 
 		if(form.data != undefined){
              for(var i=0; i<form.time; i++){
-                 $("#add").click()
-                 $("#select_"+i+">[value="+form.data[i].value+"]").prop("selected",true);
+                 add(form.data[i]['id'].split("_")[1]);
+                 $("#"+id).find("option[text='"+form.data[i]['value']+"']").attr("selected",true);
              }
 		}
 
@@ -415,7 +411,6 @@ jsPlumb.ready(function() {
 
 	});
 })
-// })();
         </script>
 {% endblock %}
 
