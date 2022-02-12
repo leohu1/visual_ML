@@ -41,7 +41,7 @@ layers_config = {
     "NewAxis": [],
 }
 
-arg = {
+layers_args = {
     "units": "int",
     "filters": "int",
     "kernel_size": "xy",

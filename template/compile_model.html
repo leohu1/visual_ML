@@ -1,0 +1,119 @@
+{%extends "base.html"%}
+{%from 'bootstrap4/form.html' import render_form%}
+{% from 'bootstrap4/nav.html' import render_nav_item %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    {% block title %}
+    <title>Compile Model</title>
+    {% endblock %}
+</head>
+<body>
+{% block nav %}
+<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+        <div class="container">
+            <div class="navbar-nav mr-auto">
+                <div class="nav-item">
+                    <a class="nav-link" onclick="redirect('/load_data')">Load Data</a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" onclick="redirect('/build_model')">Build Model</a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" onclick="redirect('/compile_model')">Compile Model</a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" onclick="redirect('/train_model')">Train Model</a>
+                </div>
+            </div>
+        </div>
+</nav>
+{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="card">
+        <div class="card-body">
+            <p>
+                <label for="epochs">Epochs:</label>
+                <input id='epochs' class='args_child mx-auto' type='number' min='0' step='1' value='1'>
+            </p>
+            <p>
+                <label for="optimizer_select">Optimizer:</label>
+                <select id="optimizer_select">
+                <option value='None' selected></option>
+                {% for optimizer in selects.optimizers %}
+                    <option value="{{ optimizer }}">{{ optimizer }}</option>
+                {% endfor %}
+                </select>
+            </p>
+
+            <div id="optimizer_config" class="config">
+
+            </div>
+
+            <p>
+                <label for="losses_select">Losses:</label>
+                <select id="losses_select">
+                <option value='None' selected></option>
+                {% for loss in selects.losses %}
+                    <option value="{{ loss }}">{{ loss }}</option>
+                {% endfor %}
+                </select>
+            </p>
+            <div id="loss_config" class="config">
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script type="application/javascript">
+const args = {{ args | safe }};
+var redirect = function (url) {
+    var opt_args = []
+    var select = $(".args_child[id!=loss_from_logits][id!=epochs]")
+    for (var i = 0; i < select.length; i++) {
+        opt_args.push({
+            "id": select[i].id,
+            "value": select[i].value
+        })
+    }
+
+    var form = {
+        "optimizer_args": opt_args,
+        "loss_use_logits": $("#loss_from_logits")[0].value,
+        "optimizer": $("#optimizer_select")[0].value,
+        "loss": $("#losses_select")[0].value,
+        "epochs": $("#epochs")[0].value
+    };
+    //alert(form);
+
+    form = JSON.stringify(form);
+
+    $.ajax({
+        type: "POST",
+        url: location,
+        data: form,
+        success:function () {window.location.assign(url);} ,
+        contentType: "application/json"
+    })
+}
+
+$(function(){
+
+   $("#optimizer_select").change(
+       function () {
+           $("#optimizer_config").empty().append(args["optimizers"][this.value])
+       }
+   );
+   $("#loss_config").append(args["losses"]);
+
+});
+
+</script>
+{% endblock %}
+
+</body>
+</html>

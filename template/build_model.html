@@ -1,7 +1,6 @@
-<!doctype html>
 {%extends "base.html"%}
-{% from 'bootstrap/nav.html' import render_nav_item %}
-<html>
+{% from 'bootstrap4/nav.html' import render_nav_item %}
+<html lang="en">
     <head>
         {% block title %}
         <title>Build Model</title>
@@ -116,49 +115,60 @@ body {
 
 path, .jtk-endpoint { cursor:pointer; }
 
-        </style>
-        {% endblock %}
-    </head>
-    <body>
-    {% block nav %}
-        <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
-            <div class="container">
-                <div class="navbar-nav mr-auto">
-                    <div class="nav-item">
-                        <a class="nav-link" onclick="redirect('/load_data')">Load Data</a>
-                    </div>
-                    <div class="nav-item">
-                        <a class="nav-link" onclick="redirect('/build_model')">Build Model</a>
-                    </div>
-                    <div class="nav-item">
-                        <a class="nav-link" onclick="redirect('/train_model')">Train Model</a>
-                    </div>
+</style>
+{% endblock %}
+</head>
+
+<body>
+{% block nav %}
+    <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+        <div class="container">
+            <div class="navbar-nav mr-auto">
+                <div class="nav-item">
+                    <a class="nav-link" onclick="redirect('/load_data')">Load Data</a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" onclick="redirect('/build_model')">Build Model</a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link" onclick="redirect('/compile_model')">Compile Model</a>
                 </div>
             </div>
-        </nav>
-    {% endblock %}
-    {% block content %}
-    <div class="container">
-    <div>
-        <button id="add" class="btn"><i class="fa fa-plus-square-o" style="font-size:36px"></i></button>
-    </div>
-    <div data-demo-id="draggableConnectors">
-        <div class="jtk-main">
-            <!-- demo -->
-            <div class="jtk-canvas canvas-wide drag-drops jtk-surface jtk-surface-nopan media" id="canvas">
-                <div class="window input" id="Input">Input</div>
-                <div class="window output" id="Output">Output</div>
-                <div id="list"></div>
-            </div>
         </div>
+    </nav>
+{% endblock %}
+{% block content %}
+<div class="container">
+<div>
+    <button id="add" class="btn"><i class="fa fa-plus-square-o" style="font-size:36px"></i></button>
+</div>
+<div data-demo-id="draggableConnectors">
+    <div class="jtk-main">
+        <!-- demo -->
+        <div class="jtk-canvas canvas-wide drag-drops jtk-surface jtk-surface-nopan media" id="canvas">
+            <div class="window input" id="Input">Input</div>
+            <div class="window output" id="Output">Output</div>
+            <div id="list"></div>
         </div>
     </div>
-    {% endblock %}
+    </div>
+</div>
+{% endblock %}
 {% block scripts %}
 {{ super() }}
 <script src="static/js/jsplumb.js"></script>
 <script>
 //import {jsPlumb} from "../static/js/jsplumb";
+
+var attributeCount = function(obj) {
+        var count = 0;
+        for(var i in obj) {
+            if(obj.hasOwnProperty(i)) {  // 建议加上判断,如果没有扩展对象属性可以不加
+                count++;
+            }
+        }
+        return count;
+    }
 
 function  uuid() {
      var  s = [];
@@ -177,80 +187,84 @@ form = {{form | safe}};
 
 var time = 0;
 
-var listDiv = document.getElementById("list"),
-showConnectionInfo = function(s) {
-		listDiv.innerHTML = s;
-		listDiv.style.display = "block";
-	},
-hideConnectionInfo = function() {
-		listDiv.style.display = "none";
-	},
-connections = [],
+var connections_list = [],
 updateConnections = function(conn, remove) {
-		if (!remove) connections.push(conn);
+		if (!remove) connections_list.push(conn);
 		else {
 			var idx = -1;
-			for (var i = 0; i < connections.length; i++) {
-				if (connections[i] == conn) {
+			for (var i = 0; i < connections_list.length; i++) {
+				if (connections_list[i] == conn) {
 					idx = i;
 					break;
 				}
 			}
-			if (idx != -1) connections.splice(idx, 1);
+			if (idx != -1) connections_list.splice(idx, 1);
 		}
-		if (connections.length > 0) {
-			var s = "<span><strong>Connections</strong></span><br/><br/><table><tr><th>Scope</th><th>Source</th><th>Target</th></tr>";
-			for (var j = 0; j < connections.length; j++) {
-				s = s + "<tr><td>" + connections[j].scope + "</td>" + "<td>" + connections[j].sourceId + "</td><td>" + connections[j].targetId + "</td></tr>";
-			}
-			showConnectionInfo(s);
-		} else hideConnectionInfo();
-		// send()
 	},
+
 redirect = function (url) {
-    var d = [];
+    var nodes = [];
     var select = $(".select");
     for (var i = 0; i < select.length; i++) {
-        d.push({
+        var parent_position = $($(select[i]).parents(".connect")[0]).position()
+        nodes.push({
             "id": select[i].id,
-            "value": select[i].value
+            "value": select[i].value,
+            "top": parent_position["top"],
+            "left": parent_position["left"],
         })
     }
-    console.log(d);
 
-    var a = [];
+    var args = [];
     var arg = $(".args_child");
     console.log(arg);
     for (var i = 0; i < arg.length; i++) {
-        a.push({
+        args.push({
             "id": arg[i].id,
             "value": arg[i].value,
             "parent": $(arg[i]).parents(".window")[0].id
         })
     }
 
-    console.log(a);
-
-    var c = [];
-    for (var i = 0; i < connections.length; i++) {
-        c.push({
-            "source": connections[i].sourceId,
-            "target": connections[i].targetId
+    var connections = [];
+    for (var i = 0; i < connections_list.length; i++) {
+        connections.push({
+            "source": connections_list[i].sourceId,
+            "target": connections_list[i].targetId
         });
     }
 
-    console.log(c);
-
     form = {
-        "connections": c,
-        "args": a,
-        "data": d
+        "connections": connections,
+        "args": args,
+        "nodes": nodes
     };
-    $.post("/build_model", form, function () {
-        window.location.assign(url);
+    form = JSON.stringify(form);
+
+    $.ajax({
+        type: "POST",
+        url: location,
+        data: form,
+        success:function () {window.location.assign(url);} ,
+        contentType: "application/json"
+    })
+},
+
+get_input_point = function (end_points) {
+    for (var i = 0; i < end_points.length; i++) {
+        if (end_points[i].connectorClass == "input_point"){
+            return end_points[i]
+        }
     }
-    )
+}
+
+get_output_point = function (end_points) {
+    for (var i = 0; i < end_points.length; i++) {
+        if (end_points[i].connectorClass == "output_point"){
+            return end_points[i]
+        }
     }
+}
 
 jsPlumb.ready(function() {
     var instance = jsPlumb.getInstance({
@@ -339,6 +353,7 @@ jsPlumb.ready(function() {
             connector: ["StateMachine", {
                 curviness: 10
             }],
+            connectorClass: "input_point",
             maxConnections: -1,
             isTarget: true,
             dropOptions: DropOptions,
@@ -360,6 +375,7 @@ jsPlumb.ready(function() {
             connector: ["StateMachine", {
                 curviness: 10
             }],
+            connectorClass: "output_point",
             maxConnections: -1,
             dropOptions: DropOptions,
         };
@@ -373,8 +389,8 @@ jsPlumb.ready(function() {
 
         instance.addEndpoint(jsPlumb.getSelector(".drag-drops .output "), InputPoint);
 
-        var add = function (u) {
-            $("#canvas").append("<div class='window connect' id='connect_" + u + "'><select id='select_" + u + "' class='select'><option value='None' selected></option>{% for item in layers %}<option value='{{item}}'>{{item}}</option>{% endfor %}</select><button id='delete_" + u + "' class='delete btn'><i class='fa fa-remove'></i></button><br><a data-target='#args_" + u + "' data-toggle='collapse'><i class='fa fa-angle-down'></i>Args</a><br><dir class='args collapse bg-light border border-dark rounded' id='args_" + u + "' style='padding-left: 0px;'></dir></div>")
+        var add = function (u, left=0, top=0) {
+            $("#canvas").append("<div class='window connect' id='connect_" + u + "' style='left: "+left+"px; top: "+top+"px;'><select id='select_" + u + "' class='select'><option value='None' selected></option>{% for item in layers %}<option value='{{item}}'>{{item}}</option>{% endfor %}</select><button id='delete_" + u + "' class='delete btn'><i class='fa fa-remove'></i></button><br><a data-target='#args_" + u + "' data-toggle='collapse'><i class='fa fa-angle-down'></i>Args</a><br><dir class='args collapse bg-light border border-dark rounded' id='args_" + u + "' style='padding-left: 0px;'></dir></div>")
             instance.draggable(document.getElementById("connect_" + u), {
                 grid: [50, 50]
             });
@@ -392,6 +408,7 @@ jsPlumb.ready(function() {
                     $("#connect_" + u).remove();
                 })
             });
+
         }
 
 		instance.on(document.getElementById("add"), "click",
@@ -400,11 +417,17 @@ jsPlumb.ready(function() {
             add(u);
 		});
 
-		if(form.data != undefined){
-             for(var i=0; i<form.time; i++){
-                 add(form.data[i]['id'].split("_")[1]);
-                 $("#"+id).find("option[text='"+form.data[i]['value']+"']").attr("selected",true);
-             }
+		if(form.nodes){
+            for(var i=0; i<form.nodes.length; i++){
+                add(form.nodes[i]['id'].split("_")[1], form.nodes[i]["left"], form.nodes[i]["top"]);
+                $("#"+form.nodes[i]['id']).find("option[value='"+form.nodes[i]['value']+"']").attr("selected",true);
+            }
+            for (var i = 0; i < form.connections.length; i++) {
+                instance.connect(jsPlumb.extend({
+                source: get_output_point(instance.getEndpoints(form.connections[i]["source"])),
+                target: get_input_point(instance.getEndpoints(form.connections[i]["target"])),
+            }, instance.Defaults))
+            }
 		}
 
 		jsPlumb.fire("jsPlumbDemoLoaded", instance);
